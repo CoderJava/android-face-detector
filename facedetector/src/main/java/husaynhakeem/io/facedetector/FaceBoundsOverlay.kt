@@ -43,7 +43,7 @@ class FaceBoundsOverlay @JvmOverloads constructor(ctx: Context, attrs: Attribute
         super.onDraw(canvas)
         facesBounds.forEach { faceBounds ->
             canvas.drawAnchor(faceBounds.box.center())
-            canvas.drawId(faceBounds.id.toString(), faceBounds.box.center())
+            // canvas.drawId(faceBounds.id.toString(), faceBounds.box.center())
             canvas.drawBounds(faceBounds.box)
         }
     }
