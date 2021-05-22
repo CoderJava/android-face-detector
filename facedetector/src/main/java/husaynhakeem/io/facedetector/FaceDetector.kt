@@ -21,6 +21,7 @@ class FaceDetector(private val faceBoundsOverlay: FaceBoundsOverlay) {
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
             .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
             .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
+            .setContourMode(FaceDetectorOptions.CONTOUR_MODE_ALL)
             .setMinFaceSize(MIN_FACE_SIZE)
             .enableTracking()
             .build()
