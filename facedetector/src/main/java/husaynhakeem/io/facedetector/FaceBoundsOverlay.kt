@@ -23,13 +23,13 @@ class FaceBoundsOverlay @JvmOverloads constructor(ctx: Context, attrs: Attribute
     private val boundsPaint = Paint()
 
     init {
-        anchorPaint.color = ContextCompat.getColor(context, android.R.color.holo_blue_dark)
+        anchorPaint.color = ContextCompat.getColor(context, android.R.color.holo_green_dark)
 
-        idPaint.color = ContextCompat.getColor(context, android.R.color.holo_blue_dark)
+        idPaint.color = ContextCompat.getColor(context, android.R.color.holo_green_dark)
         idPaint.textSize = 40f
 
         boundsPaint.style = Paint.Style.STROKE
-        boundsPaint.color = ContextCompat.getColor(context, android.R.color.holo_blue_dark)
+        boundsPaint.color = ContextCompat.getColor(context, android.R.color.holo_green_dark)
         boundsPaint.strokeWidth = 4f
     }
 
