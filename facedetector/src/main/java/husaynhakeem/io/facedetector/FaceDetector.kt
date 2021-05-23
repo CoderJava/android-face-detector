@@ -9,14 +9,40 @@ import com.google.android.gms.common.util.concurrent.HandlerExecutor
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
+import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import java.util.concurrent.Executor
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-class FaceDetector(private val faceBoundsOverlay: FaceBoundsOverlay) {
+enum class PerformanceMode {
+    Accurate,
+    Fast
+}
 
-    private val mlkitFaceDetector = FaceDetection.getClient(
+enum class LandmarkMode {
+    None,
+    All
+}
+
+enum class ClassificationMode {
+    None,
+    All
+}
+
+enum class ContourMode {
+    None,
+    All
+}
+
+class FaceDetector(private val faceBoundsOverlay: FaceBoundsOverlay,
+                   performanceMode: PerformanceMode,
+                   landmarkMode: LandmarkMode,
+                   classificationMode: ClassificationMode,
+                   contourMode: ContourMode,
+                   isEnableTracking: Boolean) {
+
+    /*private val mlkitFaceDetector = FaceDetection.getClient(
         FaceDetectorOptions.Builder()
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
             .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
@@ -25,7 +51,9 @@ class FaceDetector(private val faceBoundsOverlay: FaceBoundsOverlay) {
             .setMinFaceSize(MIN_FACE_SIZE)
             .enableTracking()
             .build()
-    )
+    )*/
+
+    private var mlkitFaceDetector: FaceDetector
 
     /** Listener that gets notified when a face detection result is ready. */
     private var onFaceDetectionResultListener: OnFaceDetectionResultListener? = null
@@ -43,7 +71,23 @@ class FaceDetector(private val faceBoundsOverlay: FaceBoundsOverlay) {
     private var isProcessing = false
 
     init {
-        faceBoundsOverlay.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+        val performance = if (performanceMode == PerformanceMode.Accurate) FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE else FaceDetectorOptions.PERFORMANCE_MODE_FAST
+        val landmark = if (landmarkMode == LandmarkMode.None) FaceDetectorOptions.LANDMARK_MODE_NONE else FaceDetectorOptions.LANDMARK_MODE_ALL
+        val classification = if (classificationMode == ClassificationMode.None) FaceDetectorOptions.CLASSIFICATION_MODE_ALL else FaceDetectorOptions.CLASSIFICATION_MODE_NONE
+        val contour = if (contourMode == ContourMode.None) FaceDetectorOptions.CONTOUR_MODE_NONE else FaceDetectorOptions.CONTOUR_MODE_ALL
+        var builderFaceDetector = FaceDetectorOptions.Builder()
+                .setPerformanceMode(performance)
+                .setLandmarkMode(landmark)
+                .setClassificationMode(classification)
+                .setContourMode(contour)
+                .setMinFaceSize(MIN_FACE_SIZE)
+        if (isEnableTracking) {
+            builderFaceDetector = builderFaceDetector.enableTracking()
+        }
+        mlkitFaceDetector = FaceDetection.getClient(builderFaceDetector.build())
+
+        faceBoundsOverlay.addOnAttachStateChangeListener(object :
+                View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(view: View?) {
                 faceDetectionExecutor = Executors.newSingleThreadExecutor()
             }
@@ -71,8 +115,8 @@ class FaceDetector(private val faceBoundsOverlay: FaceBoundsOverlay) {
                 isProcessing = true
                 if (!::faceDetectionExecutor.isInitialized) {
                     val exception =
-                        IllegalStateException("Cannot run face detection. Make sure the face " +
-                                "bounds overlay is attached to the current window.")
+                            IllegalStateException("Cannot run face detection. Make sure the face " +
+                                    "bounds overlay is attached to the current window.")
                     onError(exception)
                 } else {
                     faceDetectionExecutor.execute { frame.detectFaces() }
@@ -85,22 +129,22 @@ class FaceDetector(private val faceBoundsOverlay: FaceBoundsOverlay) {
         val data = data ?: return
         val inputImage = InputImage.fromByteArray(data, size.width, size.height, rotation, format)
         mlkitFaceDetector.process(inputImage)
-            .addOnSuccessListener { faces ->
-                synchronized(lock) {
-                    isProcessing = false
-                }
+                .addOnSuccessListener { faces ->
+                    synchronized(lock) {
+                        isProcessing = false
+                    }
 
-                // Correct the detected faces so that they're correctly rendered on the UI, then
-                // pass them to [faceBoundsOverlay] to be drawn.
-                val faceBounds = faces.map { face -> face.toFaceBounds(this) }
-                mainExecutor.execute { faceBoundsOverlay.updateFaces(faceBounds) }
-            }
-            .addOnFailureListener { exception ->
-                synchronized(lock) {
-                    isProcessing = false
+                    // Correct the detected faces so that they're correctly rendered on the UI, then
+                    // pass them to [faceBoundsOverlay] to be drawn.
+                    val faceBounds = faces.map { face -> face.toFaceBounds(this) }
+                    mainExecutor.execute { faceBoundsOverlay.updateFaces(faceBounds) }
                 }
-                onError(exception)
-            }
+                .addOnFailureListener { exception ->
+                    synchronized(lock) {
+                        isProcessing = false
+                    }
+                    onError(exception)
+                }
     }
 
     /**
@@ -137,8 +181,8 @@ class FaceDetector(private val faceBoundsOverlay: FaceBoundsOverlay) {
         // Return the scaled bounding box and a tracking id of the detected face. The tracking id
         // remains the same as long as the same face continues to be detected.
         return FaceBounds(
-            trackingId,
-            scaledBoundingBox
+                trackingId,
+                scaledBoundingBox
         )
     }
 
